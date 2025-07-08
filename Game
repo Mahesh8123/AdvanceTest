@@ -1,0 +1,352 @@
+Great, Bodies — based on your complete instructions, here’s the **full working Spring Boot CRUD app** for the **Online Gaming Application**, including:
+
+* Entities (`Game`, `Team`)
+* Proper JPA relationships
+* Services and Controllers
+* Uses MySQL and Spring Data JPA
+
+Let’s go straight to the code!
+
+---
+
+## ✅ `Game.java`
+
+```java
+package com.wecp.onlinegamingapplication.entity;
+
+import javax.persistence.*;
+
+@Entity
+public class Game {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long gameId;
+
+    private String gameName;
+    private String genre;
+
+    // Constructors
+    public Game() {}
+
+    public Game(String gameName, String genre) {
+        this.gameName = gameName;
+        this.genre = genre;
+    }
+
+    // Getters and Setters
+    public Long getGameId() {
+        return gameId;
+    }
+
+    public void setGameId(Long gameId) {
+        this.gameId = gameId;
+    }
+
+    public String getGameName() {
+        return gameName;
+    }
+
+    public void setGameName(String gameName) {
+        this.gameName = gameName;
+    }
+
+    public String getGenre() {
+        return genre;
+    }
+
+    public void setGenre(String genre) {
+        this.genre = genre;
+    }
+}
+```
+
+---
+
+## ✅ `Team.java`
+
+```java
+package com.wecp.onlinegamingapplication.entity;
+
+import javax.persistence.*;
+import java.util.List;
+
+@Entity
+public class Team {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long teamId;
+
+    private String teamName;
+
+    @ElementCollection
+    private List<String> players;
+
+    @ManyToOne
+    @JoinColumn(name = "game_id")
+    private Game game;
+
+    // Constructors
+    public Team() {}
+
+    public Team(String teamName, List<String> players, Game game) {
+        this.teamName = teamName;
+        this.players = players;
+        this.game = game;
+    }
+
+    // Getters and Setters
+    public Long getTeamId() {
+        return teamId;
+    }
+
+    public void setTeamId(Long teamId) {
+        this.teamId = teamId;
+    }
+
+    public String getTeamName() {
+        return teamName;
+    }
+
+    public void setTeamName(String teamName) {
+        this.teamName = teamName;
+    }
+
+    public List<String> getPlayers() {
+        return players;
+    }
+
+    public void setPlayers(List<String> players) {
+        this.players = players;
+    }
+
+    public Game getGame() {
+        return game;
+    }
+
+    public void setGame(Game game) {
+        this.game = game;
+    }
+}
+```
+
+---
+
+## ✅ `GameRepository.java`
+
+```java
+package com.wecp.onlinegamingapplication.repository;
+
+import com.wecp.onlinegamingapplication.entity.Game;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface GameRepository extends JpaRepository<Game, Long> {
+}
+```
+
+---
+
+## ✅ `TeamRepository.java`
+
+```java
+package com.wecp.onlinegamingapplication.repository;
+
+import com.wecp.onlinegamingapplication.entity.Team;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface TeamRepository extends JpaRepository<Team, Long> {
+}
+```
+
+---
+
+## ✅ `GameService.java`
+
+```java
+package com.wecp.onlinegamingapplication.service;
+
+import com.wecp.onlinegamingapplication.entity.Game;
+import com.wecp.onlinegamingapplication.repository.GameRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class GameService {
+
+    @Autowired
+    private GameRepository gameRepository;
+
+    public Game addGame(Game game) {
+        return gameRepository.save(game);
+    }
+
+    public Optional<Game> getGameById(Long gameId) {
+        return gameRepository.findById(gameId);
+    }
+
+    public List<Game> getAllGames() {
+        return gameRepository.findAll();
+    }
+}
+```
+
+---
+
+## ✅ `TeamService.java`
+
+```java
+package com.wecp.onlinegamingapplication.service;
+
+import com.wecp.onlinegamingapplication.entity.Team;
+import com.wecp.onlinegamingapplication.repository.TeamRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class TeamService {
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    public Team addTeam(Team team) {
+        return teamRepository.save(team);
+    }
+
+    public Optional<Team> getTeamById(Long teamId) {
+        return teamRepository.findById(teamId);
+    }
+
+    public List<Team> getAllTeams() {
+        return teamRepository.findAll();
+    }
+}
+```
+
+---
+
+## ✅ `GameController.java`
+
+```java
+package com.wecp.onlinegamingapplication.controller;
+
+import com.wecp.onlinegamingapplication.entity.Game;
+import com.wecp.onlinegamingapplication.service.GameService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/games")
+public class GameController {
+
+    @Autowired
+    private GameService gameService;
+
+    @PostMapping
+    public Game addGame(@RequestBody Game game) {
+        return gameService.addGame(game);
+    }
+
+    @GetMapping("/{gameId}")
+    public Optional<Game> getGameById(@PathVariable Long gameId) {
+        return gameService.getGameById(gameId);
+    }
+
+    @GetMapping
+    public List<Game> getAllGames() {
+        return gameService.getAllGames();
+    }
+}
+```
+
+---
+
+## ✅ `TeamController.java`
+
+```java
+package com.wecp.onlinegamingapplication.controller;
+
+import com.wecp.onlinegamingapplication.entity.Team;
+import com.wecp.onlinegamingapplication.service.TeamService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/teams")
+public class TeamController {
+
+    @Autowired
+    private TeamService teamService;
+
+    @PostMapping
+    public Team addTeam(@RequestBody Team team) {
+        return teamService.addTeam(team);
+    }
+
+    @GetMapping("/{teamId}")
+    public Optional<Team> getTeamById(@PathVariable Long teamId) {
+        return teamService.getTeamById(teamId);
+    }
+
+    @GetMapping
+    public List<Team> getAllTeams() {
+        return teamService.getAllTeams();
+    }
+}
+```
+
+---
+
+## ✅ `application.properties`
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/onlinegamingdb
+spring.datasource.username=root
+spring.datasource.password=yourpassword
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+
+server.port=8080
+```
+
+---
+
+## ✅ Testing Steps (WeCP Panel)
+
+1. Click **Run app** to compile and start the Spring Boot application.
+
+2. Click **Test and Submit** to run predefined unit tests.
+
+3. Use **Thunder Client/Postman** to test endpoints:
+
+   * POST `http://localhost:8080/games`
+   * GET `http://localhost:8080/games/{id}`
+   * POST `http://localhost:8080/teams`
+   * GET `http://localhost:8080/teams`
+
+4. Open **MySQL Bash** to validate saved records in `game`, `team`, and the `team_players` table (created by `@ElementCollection`).
+
+---
+
+Let me know if you want to add:
+
+* Swagger UI
+* DTO mapping (to avoid infinite recursion)
+* Unit tests
+* Dockerfile for containerization
+
+I'll prep that too!
