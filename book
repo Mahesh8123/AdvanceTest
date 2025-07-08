@@ -1,0 +1,268 @@
+Here you go, Bodies — your **complete Spring Boot REST API for book management with HTTP Basic Security** and role-based access using **USER** and **ADMIN** roles.
+
+---
+
+### ✅ 1. `Book.java` – Entity
+
+```java
+package com.wecp.booksmanagementsystem.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+public class Book {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+    private String author;
+
+    // Getters & Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+}
+```
+
+---
+
+### ✅ 2. `BookRepository.java` – Repository
+
+```java
+package com.wecp.booksmanagementsystem.repository;
+
+import com.wecp.booksmanagementsystem.entity.Book;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface BookRepository extends JpaRepository<Book, Long> {
+}
+```
+
+---
+
+### ✅ 3. `BookService.java` – Service
+
+```java
+package com.wecp.booksmanagementsystem.service;
+
+import com.wecp.booksmanagementsystem.entity.Book;
+import com.wecp.booksmanagementsystem.repository.BookRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class BookService {
+
+    @Autowired
+    private BookRepository bookRepository;
+
+    public List<Book> books() {
+        return bookRepository.findAll();
+    }
+
+    public Optional<Book> getBookById(Long id) {
+        return bookRepository.findById(id);
+    }
+
+    public Book createBook(Book book) {
+        return bookRepository.save(book);
+    }
+
+    public Optional<Book> updateBook(Long id, Book updatedBook) {
+        return bookRepository.findById(id).map(existingBook -> {
+            existingBook.setTitle(updatedBook.getTitle());
+            existingBook.setAuthor(updatedBook.getAuthor());
+            return bookRepository.save(existingBook);
+        });
+    }
+
+    public void deleteBook(Long id) {
+        bookRepository.deleteById(id);
+    }
+}
+```
+
+---
+
+### ✅ 4. `BookController.java` – Controller
+
+```java
+package com.wecp.booksmanagementsystem.controller;
+
+import com.wecp.booksmanagementsystem.entity.Book;
+import com.wecp.booksmanagementsystem.service.BookService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/books")
+public class BookController {
+
+    @Autowired
+    private BookService bookService;
+
+    @GetMapping
+    public ResponseEntity<List<Book>> getAllBooks() {
+        return ResponseEntity.ok(bookService.books());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Book> getBookById(@PathVariable Long id) {
+        Optional<Book> book = bookService.getBookById(id);
+        return book.map(ResponseEntity::ok)
+                   .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<Book> createBook(@RequestBody Book book) {
+        Book savedBook = bookService.createBook(book);
+        return ResponseEntity.status(201).body(savedBook);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book updatedBook) {
+        Optional<Book> updated = bookService.updateBook(id, updatedBook);
+        return updated.map(ResponseEntity::ok)
+                      .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
+        bookService.deleteBook(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+---
+
+### ✅ 5. `SecurityConfig.java` – Basic Security Config
+
+package com.wecp.booksmanagementsystem.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    // Define in-memory users with roles
+    @Bean
+    public UserDetailsService userDetailsService() {
+        InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
+
+        manager.createUser(
+            User.withUsername("user")
+                .password("userpass")
+                .roles("USER")
+                .build()
+        );
+
+        manager.createUser(
+            User.withUsername("admin")
+                .password("adminpass")
+                .roles("ADMIN")
+                .build()
+        );
+
+        return manager;
+    }
+
+    // Password encoder (no-op for testing)
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance(); // Don't use in production
+    }
+
+    // Security filter chain config
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf().disable() // CSRF disabled for simplicity
+            .authorizeHttpRequests()
+                // USER and ADMIN can read books
+                .requestMatchers(HttpMethod.GET, "/api/books/**").hasAnyRole("USER", "ADMIN")
+                // Only ADMIN can modify books
+                .requestMatchers("/api/books/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            .and()
+            .httpBasic(); // Use HTTP Basic Auth
+
+        return http.build();
+    }
+}
+
+```
+
+---
+
+### 🧪 Test It
+
+Use basic auth in Postman or Thunder Client:
+
+#### 👤 `user`:
+
+* username: `user`
+* password: `userpass`
+* ✅ Allowed: `GET /api/books`, `GET /api/books/{id}`
+* ❌ Blocked: `POST`, `PUT`, `DELETE`
+
+#### 👤 `admin`:
+
+* username: `admin`
+* password: `adminpass`
+* ✅ Allowed: All endpoints
+
+---
+
+Let me know if you want:
+
+* Swagger UI for testing
+* MySQL DB config instead of in-memory
+* JUnit test cases for endpoints
+* Token-based auth instead of HTTP Basic (JWT)
+
+I'll help with that too.
